@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      layout:decorate="~{layouts/main}">
+
+<head>
+    <title>Liste des Produits</title>
+</head>
+
+<body>
+<div layout:fragment="content">
+
+    <!-- TITRE + BOUTON AJOUTER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">
+            <i class="bi bi-box-seam me-2"></i>Liste des Produits
+        </h2>
+        <a th:href="@{/products/new}"
+           class="btn btn-success"
+           sec:authorize="hasRole('ADMIN')">
+            <i class="bi bi-plus-lg me-1"></i>Nouveau produit
+        </a>
+    </div>
+
+    <!-- BARRE DE RECHERCHE -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form th:action="@{/products}" method="get" class="row g-2 align-items-center">
+                <div class="col-auto search-bar flex-grow-1">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white">
+                            <i class="bi bi-search text-muted"></i>
+                        </span>
+                        <input type="text"
+                               class="form-control"
+                               name="keyword"
+                               th:value="${keyword}"
+                               placeholder="Rechercher un produit...">
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search me-1"></i>Rechercher
+                    </button>
+                </div>
+                <div class="col-auto" th:if="${keyword != null && !keyword.isEmpty()}">
+                    <a th:href="@{/products}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-lg me-1"></i>Réinitialiser
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TABLEAU DES PRODUITS -->
+    <div class="card shadow-sm">
+        <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">
+                <i class="bi bi-table me-2"></i>
+                <span th:text="${products.size()} + ' produit(s) trouvé(s)'">Produits</span>
+                <span th:if="${keyword != null && !keyword.isEmpty()}"
+                      th:text="' pour &quot;' + ${keyword} + '&quot;'"></span>
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0 align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col">#ID</th>
+                            <th scope="col"><i class="bi bi-tag me-1"></i>Nom</th>
+                            <th scope="col"><i class="bi bi-currency-dollar me-1"></i>Prix</th>
+                            <th scope="col"><i class="bi bi-archive me-1"></i>Quantité</th>
+                            <th scope="col"><i class="bi bi-check-circle me-1"></i>Disponible</th>
+                            <th scope="col" sec:authorize="hasRole('ADMIN')" class="text-center">
+                                <i class="bi bi-gear me-1"></i>Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Message si aucun produit -->
+                        <tr th:if="${products.isEmpty()}">
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                Aucun produit trouvé
+                                <span th:if="${keyword != null && !keyword.isEmpty()}"
+                                      th:text="' pour &quot;' + ${keyword} + '&quot;'"></span>
+                            </td>
+                        </tr>
+
+                        <!-- Ligne produit -->
+                        <tr th:each="product : ${products}">
+                            <td>
+                                <span class="badge bg-secondary"
+                                      th:text="'#' + ${product.id}"></span>
+                            </td>
+                            <td class="fw-semibold" th:text="${product.name}">Nom</td>
+                            <td>
+                                <span class="text-success fw-bold"
+                                      th:text="${#numbers.formatDecimal(product.price, 1, 2)} + ' MAD'"></span>
+                            </td>
+                            <td>
+                                <span th:class="${product.quantity < 10 ? 'badge bg-danger' : 'badge bg-info text-dark'}"
+                                      th:text="${product.quantity}"></span>
+                            </td>
+                            <td>
+                                <span th:if="${product.available}"
+                                      class="badge bg-success">
+                                    <i class="bi bi-check-lg me-1"></i>Oui
+                                </span>
+                                <span th:unless="${product.available}"
+                                      class="badge bg-secondary">
+                                    <i class="bi bi-x-lg me-1"></i>Non
+                                </span>
+                            </td>
+                            <td sec:authorize="hasRole('ADMIN')" class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <!-- Éditer -->
+                                    <a th:href="@{/products/edit/{id}(id=${product.id})}"
+                                       class="btn btn-warning btn-action">
+                                        <i class="bi bi-pencil-square me-1"></i>Éditer
+                                    </a>
+                                    <!-- Supprimer -->
+                                    <a th:href="@{/products/delete/{id}(id=${product.id}, keyword=${keyword}, page=${currentPage})}"
+                                       class="btn btn-danger btn-action"
+                                       onclick="return confirm('Confirmer la suppression de ce produit ?')">
+                                        <i class="bi bi-trash me-1"></i>Supprimer
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- PAGINATION -->
+        <div class="card-footer bg-white" th:if="${totalPages > 1}">
+            <nav aria-label="Pagination">
+                <ul class="pagination pagination-sm justify-content-center mb-0">
+                    <!-- Précédent -->
+                    <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
+                        <a class="page-link"
+                           th:href="@{/products(page=${currentPage - 1}, keyword=${keyword}, size=${size})}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+
+                    <!-- Numéros de pages -->
+                    <li class="page-item"
+                        th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                        th:classappend="${i == currentPage ? 'active' : ''}">
+                        <a class="page-link"
+                           th:href="@{/products(page=${i}, keyword=${keyword}, size=${size})}"
+                           th:text="${i + 1}">1</a>
+                    </li>
+
+                    <!-- Suivant -->
+                    <li class="page-item"
+                        th:classappend="${currentPage == totalPages - 1 ? 'disabled' : ''}">
+                        <a class="page-link"
+                           th:href="@{/products(page=${currentPage + 1}, keyword=${keyword}, size=${size})}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>
